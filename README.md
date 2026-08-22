@@ -8,7 +8,7 @@
 
 **SimpleCLI for Bun** is a comprehensive, lightweight, zero-dependency console utility framework and Rapid Application Development (RAD) toolkit built natively for the **Bun JavaScript/TypeScript runtime**.
 
-It delivers cross-platform OS system telemetry, hardware resource monitoring, desktop notifications, speech synthesis, standard path resolvers, high-speed cryptography (via `Bun.CryptoHasher` and `Bun.password`), interactive prompts (select, multi-select, fuzzy search, form wizards), multi-step task pipelines with animated spinners, structured multi-level logging, CLI flag parsing, and a complete suite of **49 pre-built production CLI applications**.
+It delivers cross-platform OS system telemetry, hardware resource monitoring, desktop notifications, speech synthesis, standard path resolvers, high-speed cryptography (via `Bun.CryptoHasher` and `Bun.password`), native namespaced multi-tenant Redis, interactive prompts (select, multi-select, fuzzy search, form wizards), multi-step task pipelines with animated spinners, structured multi-level logging, CLI flag parsing, and a complete suite of **54 pre-built production CLI applications**.
 
 ---
 
@@ -18,12 +18,17 @@ It delivers cross-platform OS system telemetry, hardware resource monitoring, de
 
 ![SimpleCLI Mathematics Suite](assets/math_suite.gif)
 
+### 🔴 Multi-Tenant Namespaced Redis Manager
+
+![Namespaced Redis Showcase](assets/redis_demo.gif)
+
 ### 🚀 Bun SimpleCLI Full Showcase
 
 ![Bun SimpleCLI Showcase](assets/bun_simplcli_demo.gif)
 
 <details>
 <summary><b>📺 Individual Mathematical, Calculus & Developer Tool Recordings (Click to Expand)</b></summary>
+
 <br>
 
 | Application | Themed VHS Preview | Description |
