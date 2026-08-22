@@ -105,6 +105,29 @@ vhs scripts/tapes/redis.tape
 
 ## 📦 Installation & Setup
 
+### Install as a Library in Your Project
+
+```bash
+# Using Bun (Recommended)
+bun add bun-simplcli
+
+# Using npm
+npm install bun-simplcli
+```
+
+### Install Globally as a CLI Suite (54 Tools)
+
+```bash
+# Global CLI installation
+bun add -g bun-simplcli
+
+# Or run instantly with bunx without installing:
+bunx bun-simplcli
+bunx simplcli --list
+```
+
+### Local Development & Source Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/codecaine-zz/bun_simplcli.git
@@ -116,6 +139,7 @@ bun test
 # Launch the unified CLI suite
 bun run start
 ```
+
 
 ---
 

@@ -1,17 +1,40 @@
 {
   "name": "bun-simplcli",
-  "version": "1.0.0",
-  "description": "Comprehensive zero-dependency headless console & RAD toolkit for Bun with rich UI, telemetry, and utilities",
+  "version": "1.2.0",
+  "description": "Comprehensive zero-dependency headless console & RAD toolkit for Bun with rich UI, telemetry, redis, and 54 CLI tools",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./src/index.ts",
-  "bin": {
-    "simplcli": "./bin/simplcli.ts"
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
   },
+  "bin": {
+    "simplcli": "./bin/simplcli.ts",
+    "bun-simplcli": "./bin/simplcli.ts"
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "cli_apps",
+    "README.md",
+    "CLI_API.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "bun test",
     "start": "bun run bin/simplcli.ts",
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun"
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "prepublishOnly": "bun test && bun run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codecaine-zz/bun_simplcli.git"
   },
   "keywords": [
     "bun",
@@ -19,6 +42,8 @@
     "terminal",
     "console",
     "rad",
+    "redis",
+    "namespaced-redis",
     "prompts",
     "tables",
     "spinners",
