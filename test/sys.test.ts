@@ -53,7 +53,7 @@ describe('Sys Telemetry, Process Management & File System Tests', () => {
     sys.ensureDir(tmpDir);
 
     const testFile = `${tmpDir}/sample.json`;
-    const testData = { name: 'SimpleCLI', version: '1.4.0', active: true, count: 42 };
+    const testData = { name: 'SimpleCLI', version: '1.5.0', active: true, count: 42 };
 
     await sys.writeJson(testFile, testData);
     expect(await sys.fileExists(testFile)).toBe(true);
@@ -62,7 +62,7 @@ describe('Sys Telemetry, Process Management & File System Tests', () => {
 
     const readData = await sys.readJson<{ name: string; version: string }>(testFile);
     expect(readData.name).toBe('SimpleCLI');
-    expect(readData.version).toBe('1.4.0');
+    expect(readData.version).toBe('1.5.0');
 
     const syncReadData = sys.readJsonSync<{ active: boolean }>(testFile);
     expect(syncReadData.active).toBe(true);
