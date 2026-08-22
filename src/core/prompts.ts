@@ -3,10 +3,10 @@
  */
 
 import { Ansi } from './ansi.ts';
-import { type FormField, PathMode } from './types.ts';
-import { existsSync, statSync } from 'node:fs';
+import { type FormField, PathMode, type FilePickerOptions } from './types.ts';
+import { existsSync, statSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import * as readline from 'node:readline';
 
 export class Prompts {
@@ -455,4 +455,166 @@ export class Prompts {
 
     return results;
   }
+
+  /**
+   * Interactive File & Directory Explorer Picker
+   */
+  public static async filePicker(message: string = 'Select a file or directory:', options: FilePickerOptions = {}): Promise<string> {
+    let currentDir = resolve(options.baseDir ? Prompts.expandPath(options.baseDir) : process.cwd());
+    const mode = options.mode ?? PathMode.ANY;
+    const extensions = options.extensions?.map(e => e.startsWith('.') ? e.toLowerCase() : `.${e.toLowerCase()}`);
+    const allowHidden = options.allowHidden ?? false;
+
+    if (!process.stdin.isTTY) {
+      return Prompts.promptPath(message, currentDir, mode);
+    }
+
+    interface FileEntry {
+      name: string;
+      displayName: string;
+      fullPath: string;
+      isDir: boolean;
+    }
+
+    const readEntries = (dir: string): FileEntry[] => {
+      const list: FileEntry[] = [];
+      const parent = dirname(dir);
+      if (parent !== dir) {
+        list.push({ name: '..', displayName: '📁 .. (Parent Directory)', fullPath: parent, isDir: true });
+      }
+
+      try {
+        const files = readdirSync(dir, { withFileTypes: true });
+        // Directories first
+        for (const f of files) {
+          if (!allowHidden && f.name.startsWith('.') && f.name !== '..') continue;
+          if (f.isDirectory()) {
+            list.push({
+              name: f.name,
+              displayName: `📁 ${f.name}/`,
+              fullPath: join(dir, f.name),
+              isDir: true,
+            });
+          }
+        }
+        // Then files
+        for (const f of files) {
+          if (!allowHidden && f.name.startsWith('.')) continue;
+          if (f.isFile() || f.isSymbolicLink()) {
+            if (extensions && extensions.length > 0) {
+              const lower = f.name.toLowerCase();
+              if (!extensions.some(ext => lower.endsWith(ext))) continue;
+            }
+            list.push({
+              name: f.name,
+              displayName: `📄 ${f.name}`,
+              fullPath: join(dir, f.name),
+              isDir: false,
+            });
+          }
+        }
+      } catch {
+        // Unreadable directory
+      }
+
+      return list;
+    };
+
+    return new Promise((resolveChoice) => {
+      let entries = readEntries(currentDir);
+      let cursorIdx = 0;
+      const pageSize = 10;
+      const isRaw = process.stdin.isRaw;
+      process.stdin.setRawMode?.(true);
+      process.stdin.resume();
+      process.stdin.setEncoding('utf8');
+
+      let lastRenderedLines = 0;
+
+      const render = (firstTime: boolean = false) => {
+        if (!firstTime && lastRenderedLines > 0) {
+          process.stdout.write(Ansi.cursorUp(lastRenderedLines) + Ansi.clearLine());
+        }
+
+        const visibleCount = Math.min(pageSize, entries.length);
+        const startIdx = Math.max(0, Math.min(cursorIdx - Math.floor(pageSize / 2), entries.length - visibleCount));
+        const visibleEntries = entries.slice(startIdx, startIdx + visibleCount);
+
+        let out = `${Ansi.cyan('?')} ${Ansi.bold(message)} ${Ansi.dim(`[${currentDir}]`)}\n`;
+        out += `${Ansi.dim('  (↑/↓: navigate, Enter: open/select, Space: select folder, q: cancel)')}\n`;
+
+        if (entries.length === 0) {
+          out += `  ${Ansi.dim('(empty directory)')}\n`;
+        } else {
+          visibleEntries.forEach((entry, i) => {
+            const actualIdx = startIdx + i;
+            const isSelected = actualIdx === cursorIdx;
+            const prefix = isSelected ? Ansi.cyan('❯') : ' ';
+            const label = isSelected ? Ansi.bold(Ansi.cyan(entry.displayName)) : entry.displayName;
+            out += `${prefix} ${label}\n`;
+          });
+        }
+
+        const lines = out.split('\n').length - 1;
+        lastRenderedLines = lines;
+        process.stdout.write(out);
+      };
+
+      render(true);
+
+      const cleanup = () => {
+        process.stdin.setRawMode?.(isRaw ?? false);
+        process.stdin.pause();
+        process.stdin.removeListener('data', onData);
+        if (lastRenderedLines > 0) {
+          process.stdout.write(Ansi.cursorUp(lastRenderedLines) + Ansi.clearLine());
+        }
+      };
+
+      const onData = (chunk: string) => {
+        if (chunk === '\u0003' || chunk === 'q' || chunk === '\x1b') {
+          // Cancel
+          cleanup();
+          process.stdout.write(`${Ansi.yellow('!')} ${Ansi.bold(message)}: ${Ansi.dim('(cancelled)')}\n`);
+          resolveChoice('');
+        } else if (chunk === ' ' && (mode === PathMode.DIRECTORY || mode === PathMode.ANY)) {
+          // Select current directory with Space
+          cleanup();
+          process.stdout.write(`${Ansi.green('✔')} ${Ansi.bold(message)}: ${Ansi.cyan(currentDir)}\n`);
+          resolveChoice(currentDir);
+        } else if (chunk === '\r' || chunk === '\n') {
+          if (entries.length === 0) return;
+          const target = entries[cursorIdx];
+          if (!target) return;
+
+          if (target.isDir) {
+            currentDir = target.fullPath;
+            entries = readEntries(currentDir);
+            cursorIdx = 0;
+            render(false);
+          } else {
+            // File selected
+            cleanup();
+            process.stdout.write(`${Ansi.green('✔')} ${Ansi.bold(message)}: ${Ansi.cyan(target.fullPath)}\n`);
+            resolveChoice(target.fullPath);
+          }
+        } else if (chunk === '\x1b[A' || chunk === 'k') {
+          // Up
+          if (entries.length > 0) {
+            cursorIdx = (cursorIdx - 1 + entries.length) % entries.length;
+            render(false);
+          }
+        } else if (chunk === '\x1b[B' || chunk === 'j') {
+          // Down
+          if (entries.length > 0) {
+            cursorIdx = (cursorIdx + 1) % entries.length;
+            render(false);
+          }
+        }
+      };
+
+      process.stdin.on('data', onData);
+    });
+  }
 }
+

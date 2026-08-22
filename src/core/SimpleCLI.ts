@@ -6,6 +6,7 @@ import { Ansi } from './ansi.ts';
 import { Logger } from './logger.ts';
 import { Prompts } from './prompts.ts';
 import { Pipeline } from './pipeline.ts';
+import { ConfigStore } from './config.ts';
 import {
   LogLevel,
   type LogLevelName,
@@ -15,10 +16,15 @@ import {
   PathMode,
   TreeNode,
   type FlagOption,
+  type CommandAction,
+  type FilePickerOptions,
+  type OutputFormat,
+  type ShellType,
 } from './types.ts';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 
 export class SimpleCLI {
   public appName: string = 'SimpleCLI Application';
@@ -29,9 +35,12 @@ export class SimpleCLI {
   public noColor: boolean = false;
   public silentMode: boolean = false;
   public logger: Logger;
+  public config: ConfigStore;
   private state: Record<string, string> = {};
   private flagsDef: Map<string, FlagOption> = new Map();
   private flagsVal: Map<string, any> = new Map();
+  private subcommands: Map<string, SimpleCLI> = new Map();
+  private actionHandler?: CommandAction;
   private posArgs: string[] = [];
   private benchStart: number = performance.now();
 
@@ -39,6 +48,7 @@ export class SimpleCLI {
     this.appName = appName;
     this.version = version;
     this.logger = new Logger(LogLevel.INFO, undefined, this.noColor);
+    this.config = new ConfigStore(this.appName);
   }
 
   public static new(appName: string): SimpleCLI {
@@ -54,6 +64,7 @@ export class SimpleCLI {
     const baseName = scriptPath.split(/[/\\]/).pop()?.replace(/\.(ts|js)$/, '') || 'SimpleCLI';
     return new SimpleCLI(baseName);
   }
+
 
   // ===========================================================================
   // Fluent Configuration
@@ -140,15 +151,121 @@ export class SimpleCLI {
     return this;
   }
 
+  public command(
+    name: string,
+    descriptionOrSetup?: string | ((sub: SimpleCLI) => void),
+    maybeSetup?: (sub: SimpleCLI) => void
+  ): SimpleCLI {
+    let desc = '';
+    let setupFn: ((sub: SimpleCLI) => void) | undefined;
+    if (typeof descriptionOrSetup === 'string') {
+      desc = descriptionOrSetup;
+      setupFn = maybeSetup;
+    } else if (typeof descriptionOrSetup === 'function') {
+      setupFn = descriptionOrSetup;
+    }
+
+    const sub = new SimpleCLI(name, this.version);
+    sub.setDescription(desc);
+    sub.setNoColor(this.noColor);
+    if (setupFn) {
+      setupFn(sub);
+    }
+    this.subcommands.set(name, sub);
+    return sub;
+  }
+
+  public action(fn: CommandAction): this {
+    this.actionHandler = fn;
+    return this;
+  }
+
+  public getSubcommands(): Map<string, SimpleCLI> {
+    return this.subcommands;
+  }
+
+  public getAllFlags(): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const [key, val] of this.flagsVal.entries()) {
+      result[key] = val;
+    }
+    return result;
+  }
+
+  public suggestMatch(input: string, choices: string[], maxDistance: number = 3): string | undefined {
+    const levenshtein = (a: string, b: string): number => {
+      const m = a.length;
+      const n = b.length;
+      const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[m][n];
+    };
+
+    let bestMatch: string | undefined;
+    let minDistance = Infinity;
+    const lowerInput = input.toLowerCase();
+
+    for (const choice of choices) {
+      const lowerChoice = choice.toLowerCase();
+      const strippedChoice = lowerChoice.replace(/(_cli|-cli)$/, '');
+      const distDirect = levenshtein(lowerInput, lowerChoice);
+      const distStripped = levenshtein(lowerInput, strippedChoice);
+      const dist = Math.min(distDirect, distStripped);
+      const effectiveMaxDist = Math.max(maxDistance, Math.floor(strippedChoice.length / 2));
+
+      if (dist < minDistance && dist <= effectiveMaxDist) {
+        minDistance = dist;
+        bestMatch = choice;
+      }
+    }
+    return bestMatch;
+  }
+
+
   public parseCli(rawArgs?: string[]): boolean {
     const args = rawArgs ?? process.argv.slice(2);
     return this.parseArgs(args);
+  }
+
+  public async run(rawArgs?: string[]): Promise<boolean> {
+    const args = rawArgs ?? process.argv.slice(2);
+    const parsed = this.parseArgs(args);
+    if (!parsed) return false;
+
+    if (this.subcommands.size > 0 && this.posArgs.length > 0) {
+      const subName = this.posArgs[0];
+      const sub = this.subcommands.get(subName);
+      if (sub) {
+        return await sub.run(args.slice(1));
+      }
+    }
+
+    if (this.actionHandler) {
+      await this.actionHandler(this.getAllFlags(), this.posArgs);
+      return true;
+    }
+
+    return true;
   }
 
   public parseArgs(args: string[]): boolean {
     const shortToName = new Map<string, string>();
     for (const [name, opt] of this.flagsDef.entries()) {
       if (opt.short) shortToName.set(opt.short, name);
+    }
+
+    // Check completion flag or command
+    if (args.includes('--completion') || (args[0] === 'completion' && args[1])) {
+      const shell = (args.includes('--completion') ? args[args.indexOf('--completion') + 1] : args[1]) as ShellType || 'zsh';
+      console.log(this.generateCompletions(shell));
+      return false;
     }
 
     // Check help flag
@@ -164,6 +281,24 @@ export class SimpleCLI {
 
     this.posArgs = [];
     let i = 0;
+
+    // Check subcommand routing for first positional argument if subcommands are defined
+    if (args.length > 0 && !args[0].startsWith('-') && this.subcommands.size > 0) {
+      const firstArg = args[0];
+      const sub = this.subcommands.get(firstArg);
+      if (sub) {
+        this.posArgs.push(firstArg);
+        return true;
+      } else {
+        const suggestion = this.suggestMatch(firstArg, Array.from(this.subcommands.keys()));
+        if (suggestion) {
+          console.error(Ansi.red(`Unknown command "${firstArg}". Did you mean "${suggestion}"?`));
+        } else {
+          console.error(Ansi.red(`Unknown command "${firstArg}".`));
+        }
+        return false;
+      }
+    }
 
     while (i < args.length) {
       const arg = args[i];
@@ -196,7 +331,10 @@ export class SimpleCLI {
             }
           }
         } else {
-          // Unknown flag or positional
+          const suggestion = this.suggestMatch(flagName, Array.from(this.flagsDef.keys()));
+          if (suggestion) {
+            console.error(Ansi.yellow(`Unknown flag "--${flagName}". Did you mean "--${suggestion}"?`));
+          }
           this.posArgs.push(arg);
         }
       } else if (arg.startsWith('-') && arg.length > 1) {
@@ -273,7 +411,21 @@ export class SimpleCLI {
     }
 
     console.log(`${Ansi.bold('USAGE:')}`);
-    console.log(`  ${this.appName.toLowerCase()} [FLAGS] [ARGUMENTS...]\n`);
+    const usageCmd = this.subcommands.size > 0 ? ' [COMMAND]' : '';
+    console.log(`  ${this.appName.toLowerCase()}${usageCmd} [FLAGS] [ARGUMENTS...]\n`);
+
+    if (this.subcommands.size > 0) {
+      console.log(`${Ansi.bold('COMMANDS:')}`);
+      const cmdRows: [string, string][] = [];
+      for (const [name, sub] of this.subcommands.entries()) {
+        cmdRows.push([name, sub.description || '']);
+      }
+      const maxCmdLen = Math.max(...cmdRows.map(r => r[0].length));
+      for (const [name, desc] of cmdRows) {
+        console.log(`  ${Ansi.cyan(name.padEnd(maxCmdLen + 2))} ${desc}`);
+      }
+      console.log('');
+    }
 
     if (this.flagsDef.size > 0) {
       console.log(`${Ansi.bold('FLAGS:')}`);
@@ -300,6 +452,7 @@ export class SimpleCLI {
       console.log('');
     }
   }
+
 
   // ===========================================================================
   // Console UI & ANSI Color RAD Components
@@ -852,4 +1005,223 @@ export class SimpleCLI {
     const dir = resolve(homedir(), `.${appName.toLowerCase()}`);
     return resolve(dir, fileName);
   }
+
+  // ===========================================================================
+  // Interactive File Picker Proxy
+  // ===========================================================================
+
+  public filePicker(message?: string, options?: FilePickerOptions): Promise<string> {
+    return Prompts.filePicker(message, options);
+  }
+
+  // ===========================================================================
+  // Shell Auto-Completion Generator
+  // ===========================================================================
+
+  public generateCompletions(shell: ShellType = 'zsh'): string {
+    const commands = Array.from(this.subcommands.entries()).map(([k, v]) => ({ name: k, desc: v.description }));
+    const flags: string[] = [];
+    for (const [name, opt] of this.flagsDef.entries()) {
+      flags.push(`--${name}`);
+      if (opt.short) flags.push(`-${opt.short}`);
+    }
+
+    if (shell === 'bash') {
+      const allOpts = [...flags, ...commands.map(c => c.name)].join(' ');
+      return `_${this.appName.toLowerCase()}_completions() {
+  local cur prev
+  COMPREPLY=()
+  cur="\${COMP_WORDS[COMP_CWORD]}"
+  prev="\${COMP_WORDS[COMP_CWORD-1]}"
+  local opts="${allOpts}"
+  COMPREPLY=( $(compgen -W "\${opts}" -- \${cur}) )
+  return 0
 }
+complete -F _${this.appName.toLowerCase()}_completions ${this.appName.toLowerCase()}`;
+    }
+
+    if (shell === 'fish') {
+      let script = `# Fish completions for ${this.appName}\n`;
+      for (const [name, opt] of this.flagsDef.entries()) {
+        const shortPart = opt.short ? `-s ${opt.short} ` : '';
+        script += `complete -c ${this.appName.toLowerCase()} ${shortPart}-l ${name} -d "${opt.desc.replace(/"/g, '\\"')}"\n`;
+      }
+      for (const cmd of commands) {
+        script += `complete -c ${this.appName.toLowerCase()} -n "__fish_use_subcommand" -a "${cmd.name}" -d "${cmd.desc.replace(/"/g, '\\"')}"\n`;
+      }
+      return script;
+    }
+
+    // zsh default
+    let script = `#compdef ${this.appName.toLowerCase()}\n\n_${this.appName.toLowerCase()}() {\n`;
+    script += `  local -a commands\n  commands=(\n`;
+    for (const cmd of commands) {
+      script += `    '${cmd.name}:${cmd.desc.replace(/'/g, "\\'")}'\n`;
+    }
+    script += `  )\n\n  _arguments -s \\\n`;
+    for (const [name, opt] of this.flagsDef.entries()) {
+      const shortPart = opt.short ? ` '(-${opt.short} --${name})'{-${opt.short},--${name}}` : ` '--${name}'`;
+      script += `   ${shortPart}'[${opt.desc.replace(/'/g, "\\'")}]' \\\n`;
+    }
+    script += `    '1: :->command' \\\n    '*::arg:->args'\n}\n\n_${this.appName.toLowerCase()} "$@"\n`;
+    return script;
+  }
+
+  // ===========================================================================
+  // Smart Output & Pipe Auto-Detection
+  // ===========================================================================
+
+  public output(data: any, options?: { format?: OutputFormat; title?: string }): void {
+    const isJsonRequested = this.getFlagBool('json') || options?.format === 'json';
+    const isPiped = !process.stdout.isTTY;
+
+    if (isJsonRequested || (isPiped && options?.format !== 'text' && options?.format !== 'markdown')) {
+      console.log(JSON.stringify(data, null, 2));
+      return;
+    }
+
+    if (options?.title) {
+      this.println(`\n${this.bold(this.cyan(options.title))}`);
+    }
+
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        this.println(this.dim('(empty dataset)'));
+        return;
+      }
+      if (typeof data[0] === 'object' && data[0] !== null) {
+        const headers = Object.keys(data[0]);
+        const rows = data.map(item => headers.map(h => (item as any)[h] ?? ''));
+        this.table(headers, rows);
+      } else {
+        data.forEach(item => this.println(`  • ${item}`));
+      }
+    } else if (typeof data === 'object' && data !== null) {
+      this.printKv(data);
+    } else {
+      this.println(String(data));
+    }
+  }
+
+  // ===========================================================================
+  // Pretty Error Formatter & Global Error Handling
+  // ===========================================================================
+
+  public formatError(err: unknown): string {
+    const error = err instanceof Error ? err : new Error(String(err));
+    const title = `✖ ${error.name || 'Error'}: ${error.message}`;
+    let stackClean = '';
+    if (error.stack) {
+      const lines = error.stack.split('\n').slice(1);
+      const filtered = lines.map(line => {
+        if (line.includes('node:') || line.includes('bun:')) {
+          return Ansi.dim(line);
+        }
+        return Ansi.yellow(line);
+      });
+      stackClean = '\n' + filtered.join('\n');
+    }
+    return `${this.red(this.bold(title))}${stackClean}`;
+  }
+
+  public handleErrors(): this {
+    process.on('uncaughtException', (err) => {
+      console.error(`\n${this.formatError(err)}`);
+      process.exit(1);
+    });
+    process.on('unhandledRejection', (reason) => {
+      console.error(`\n${this.formatError(reason)}`);
+      process.exit(1);
+    });
+    return this;
+  }
+
+  // ===========================================================================
+  // Markdown Documentation & Man-Page Generator
+  // ===========================================================================
+
+  public generateMarkdownDocs(): string {
+    let md = `# \`${this.appName}\`\n\n`;
+    if (this.description) md += `> ${this.description}\n\n`;
+    if (this.version) md += `**Version:** \`${this.version}\`  \n`;
+    if (this.author) md += `**Author:** ${this.author}  \n`;
+
+    md += `\n## Usage\n\n\`\`\`bash\n${this.appName.toLowerCase()} [command] [flags] [arguments...]\n\`\`\`\n\n`;
+
+    if (this.flagsDef.size > 0) {
+      md += `## Flags\n\n| Flag | Short | Type | Default | Description |\n| :--- | :--- | :--- | :--- | :--- |\n`;
+      for (const [name, opt] of this.flagsDef.entries()) {
+        const shortStr = opt.short ? `\`-${opt.short}\`` : '-';
+        const defStr = opt.defaultVal !== undefined && opt.defaultVal !== '' && opt.defaultVal !== false && opt.defaultVal !== 0
+          ? `\`${JSON.stringify(opt.defaultVal)}\``
+          : '-';
+        md += `| \`--${name}\` | ${shortStr} | \`${opt.kind}\` | ${defStr} | ${opt.desc || '-'} |\n`;
+      }
+      md += `\n`;
+    }
+
+    if (this.subcommands.size > 0) {
+      md += `## Commands\n\n`;
+      for (const [name, sub] of this.subcommands.entries()) {
+        md += `### \`${name}\`\n\n${sub.description || 'No description provided.'}\n\n`;
+        if (sub.flagsDef.size > 0) {
+          md += `| Flag | Short | Type | Default | Description |\n| :--- | :--- | :--- | :--- | :--- |\n`;
+          for (const [fName, opt] of sub.flagsDef.entries()) {
+            const shortStr = opt.short ? `\`-${opt.short}\`` : '-';
+            const defStr = opt.defaultVal !== undefined && opt.defaultVal !== '' && opt.defaultVal !== false && opt.defaultVal !== 0
+              ? `\`${JSON.stringify(opt.defaultVal)}\``
+              : '-';
+            md += `| \`--${fName}\` | ${shortStr} | \`${opt.kind}\` | ${defStr} | ${opt.desc || '-'} |\n`;
+          }
+          md += `\n`;
+        }
+      }
+    }
+
+    return md;
+  }
+
+  public generateManPage(): string {
+    const appUpper = this.appName.toUpperCase();
+    const date = new Date().toISOString().slice(0, 10);
+    let man = `.TH ${appUpper} 1 "${date}" "${this.appName} ${this.version}" "User Commands"\n`;
+    man += `.SH NAME\n${this.appName.toLowerCase()} \\- ${this.description || 'SimpleCLI Utility'}\n`;
+    man += `.SH SYNOPSIS\n.B ${this.appName.toLowerCase()}\n[\\fIOPTIONS\\fR] [\\fICOMMAND\\fR]\n`;
+    man += `.SH DESCRIPTION\n${this.description || this.appName}\n`;
+
+    if (this.flagsDef.size > 0) {
+      man += `.SH OPTIONS\n`;
+      for (const [name, opt] of this.flagsDef.entries()) {
+        const shortPart = opt.short ? `-${opt.short}, ` : '';
+        man += `.TP\n\\fB${shortPart}--${name}\\fR\n${opt.desc}\n`;
+      }
+    }
+
+    if (this.subcommands.size > 0) {
+      man += `.SH COMMANDS\n`;
+      for (const [name, sub] of this.subcommands.entries()) {
+        man += `.TP\n\\fB${name}\\fR\n${sub.description}\n`;
+      }
+    }
+
+    if (this.author) {
+      man += `.SH AUTHOR\n${this.author}\n`;
+    }
+
+    return man;
+  }
+
+  // ===========================================================================
+  // Standalone Single-Binary Compilation
+  // ===========================================================================
+
+  public static async compileBinary(entrypoint: string, outName: string, target?: string): Promise<boolean> {
+    const args = ['build', '--compile', entrypoint, '--outfile', outName];
+    if (target) {
+      args.push('--target', target);
+    }
+    const proc = spawnSync('bun', args, { stdio: 'inherit' });
+    return proc.status === 0;
+  }
+}
+

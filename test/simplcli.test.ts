@@ -126,4 +126,111 @@ describe('SimpleCLI Core & UI Tests', () => {
     expect(root.children[0].children.length).toBe(2);
     expect(root.children[0].children[0].label).toBe('primary-node');
   });
+
+  it('routes subcommands and executes actions with flags', async () => {
+    const app = SimpleCLI.newApp('GitApp', '1.0.0');
+    let executed = false;
+    let receivedFlags: any = null;
+    let receivedArgs: any = null;
+
+    app.command('commit', (sub) => {
+      sub.setDescription('Record changes to the repository')
+        .addFlagString('message', 'm', '', 'Commit message')
+        .action((flags, args) => {
+          executed = true;
+          receivedFlags = flags;
+          receivedArgs = args;
+        });
+    });
+
+    const success = await app.run(['commit', '-m', 'Initial commit', 'file.txt']);
+    expect(success).toBe(true);
+    expect(executed).toBe(true);
+    expect(receivedFlags?.message).toBe('Initial commit');
+    expect(receivedArgs).toEqual(['file.txt']);
+  });
+
+  it('computes closest typo suggestions ("Did you mean?") accurately', () => {
+    const app = SimpleCLI.new('TypoApp');
+    const available = ['docker_cli', 'dataconvert_cli', 'devops_sentinel', 'disk_cli'];
+
+    expect(app.suggestMatch('doker', available)).toBe('docker_cli');
+    expect(app.suggestMatch('disck', available)).toBe('disk_cli');
+    expect(app.suggestMatch('dataconvert', available)).toBe('dataconvert_cli');
+    expect(app.suggestMatch('unrelated_xyz', available)).toBeUndefined();
+  });
+
+  it('manages zero-config persistent storage with ConfigStore', () => {
+    const app = SimpleCLI.newApp('TestConfigApp', '1.0.0');
+    app.config.clear();
+
+    app.config.set('theme.dark', true);
+    app.config.set('user.email', 'dev@example.com');
+    app.config.set('retries', 3);
+
+    expect(app.config.get('theme.dark')).toBe(true);
+    expect(app.config.get('user.email')).toBe('dev@example.com');
+    expect(app.config.get('retries')).toBe(3);
+    expect(app.config.get('nonexistent', 'fallback')).toBe('fallback');
+    expect(app.config.has('theme.dark')).toBe(true);
+
+    app.config.delete('retries');
+    expect(app.config.has('retries')).toBe(false);
+
+    app.config.clear();
+    expect(app.config.all()).toEqual({});
+  });
+
+  it('generates shell auto-completions for bash, zsh, and fish', () => {
+    const app = SimpleCLI.newApp('DeployTool', '1.0.0');
+    app.addFlagString('env', 'e', 'dev', 'Target environment');
+    app.addFlagBool('dry-run', 'd', false, 'Simulate execution');
+    app.command('cluster', (sub) => {
+      sub.setDescription('Manage clusters');
+    });
+
+    const zsh = app.generateCompletions('zsh');
+    expect(zsh).toContain('#compdef deploytool');
+    expect(zsh).toContain('cluster:Manage clusters');
+    expect(zsh).toContain('--env');
+
+    const bash = app.generateCompletions('bash');
+    expect(bash).toContain('_deploytool_completions()');
+    expect(bash).toContain('--dry-run');
+
+    const fish = app.generateCompletions('fish');
+    expect(fish).toContain('complete -c deploytool');
+  });
+
+  it('generates markdown documentation and roff man-pages', () => {
+    const app = SimpleCLI.newApp('ToolBox', '2.5.0')
+      .setDescription('Universal toolbox description')
+      .setAuthor('Antigravity')
+      .addFlagString('config', 'c', '', 'Path to config')
+      .addFlagBool('force', 'f', false, 'Force action');
+
+    app.command('status', (sub) => {
+      sub.setDescription('Check status');
+    });
+
+    const md = app.generateMarkdownDocs();
+    expect(md).toContain('# `ToolBox`');
+    expect(md).toContain('Universal toolbox description');
+    expect(md).toContain('| `--config` | `-c` | `string` |');
+    expect(md).toContain('### `status`');
+
+    const man = app.generateManPage();
+    expect(man).toContain('.TH TOOLBOX 1');
+    expect(man).toContain('.SH NAME');
+    expect(man).toContain('.SH OPTIONS');
+  });
+
+  it('formats errors cleanly with formatError', () => {
+    const app = SimpleCLI.new('ErrorApp');
+    const err = new Error('Database connection timed out');
+    const formatted = app.formatError(err);
+
+    expect(formatted).toContain('✖ Error: Database connection timed out');
+  });
 });
+

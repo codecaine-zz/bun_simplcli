@@ -7,6 +7,7 @@ export * from './core/ansi.ts';
 export * from './core/logger.ts';
 export * from './core/prompts.ts';
 export * from './core/pipeline.ts';
+export * from './core/config.ts';
 export * from './core/SimpleCLI.ts';
 export * from './sys/index.ts';
 export * from './stdlib/index.ts';

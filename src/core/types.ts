@@ -140,3 +140,25 @@ export interface SimpleURL {
   query: string;
   fragment: string;
 }
+
+export type CommandAction = (flags: Record<string, any>, args: string[]) => void | Promise<void>;
+
+export interface CommandDefinition {
+  name: string;
+  description: string;
+  aliases?: string[];
+  flags: Map<string, FlagOption>;
+  action?: CommandAction;
+}
+
+export interface FilePickerOptions {
+  baseDir?: string;
+  mode?: PathMode;
+  extensions?: string[];
+  allowHidden?: boolean;
+}
+
+export type OutputFormat = 'json' | 'table' | 'kv' | 'markdown' | 'text';
+
+export type ShellType = 'bash' | 'zsh' | 'fish';
+

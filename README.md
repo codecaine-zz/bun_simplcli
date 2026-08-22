@@ -235,6 +235,7 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `dns_cli` | DNS lookup, nameserver & latency inspector |
 | `docker_cli` | Docker container & image management dashboard |
 | `dot_cli` | Dotfiles manager & config symlink synchronizer |
+| `env_cli` | Environment secret auditor, syntax validator & `.env.example` diff inspector |
 | `exif_cli` | Image EXIF metadata inspector & stripper |
 | `fd_cli` | Fast filesystem search & directory traversal tool |
 | `ffmpeg_cli` | Video & audio transcoding preset pipeline helper |
@@ -244,6 +245,7 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `ifconfig_cli` | Network interface & IP configuration inspector |
 | `imagemagick_cli` | Batch image converter, resizer & thumbnail engine |
 | `jq_cli` | JSON query, filter, and syntax highlighter |
+| `jwt_cli` | Zero-dependency JSON Web Token decoder & claim analyzer |
 | `kalker_cli` | Scientific mathematics & calculus calculator |
 | `launchd_cli` | macOS launchd service manager & supervisor |
 | `media_studio_cli` | Multi-purpose media production toolkit |
@@ -253,6 +255,7 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `ocr_cli` | Optical character recognition text extractor |
 | `ouch_cli` | Universal archive compressor & decompressor |
 | `pandoc_cli` | Universal document & markup converter |
+| `port_kill_cli` | Inspect listening network ports & kill stuck dev server processes |
 | `qalc_cli` | Advanced equation solver & algebraic calculator |
 | `recon_cli` | Security & network reconnaissance suite |
 | `regex_cli` | Regular expression tester & capture group visualizer |
@@ -260,6 +263,7 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `say_cli` | Text-to-speech voice synthesis CLI |
 | `sd_cli` | Search & replace text utility with line diffs |
 | `sed_cli` | Stream editor & line transformation utility |
+| `speedtest_cli` | Network throughput, latency, and ping benchmarker |
 | `sqlite_cli` | SQLite database explorer & table formatter |
 | `statistics_cli` | Statistical analysis & metrics engine |
 | `subfinder_cli` | Subdomain discovery & DNS enumeration tool |
@@ -273,10 +277,17 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Tests & Building
 
 ```bash
+# Run all unit tests
 bun test
+
+# Generate shell completions for zsh, bash, or fish
+bun run bin/simplcli.ts completion zsh
+
+# Compile any CLI tool to a standalone zero-dependency executable
+bun run bin/simplcli.ts compile jwt_cli ./dist/jwt-bin
 ```
 
 ---
@@ -284,3 +295,4 @@ bun test
 ## 📄 License
 
 MIT © [codecaine](LICENSE)
+

@@ -222,3 +222,114 @@ const dist = stdlib.levenshteinDistance('kitten', 'sitting');
 const sim = stdlib.jaroWinklerSimilarity('martha', 'marhta');
 const slug = stdlib.slugify('Hello World 2026!');
 ```
+
+---
+
+## 8. Subcommand Routing & Action Handlers
+
+Organize complex multi-command CLI utilities with isolated flags, descriptions, and action callbacks:
+
+```typescript
+const app = SimpleCLI.newApp('cloudctl', '1.0.0')
+  .setDescription('Cloud Infrastructure Management Suite');
+
+app.command('deploy', (sub) => {
+  sub.setDescription('Deploy service container to cluster')
+    .addFlagString('env', 'e', 'staging', 'Target deployment environment')
+    .addFlagBool('force', 'f', false, 'Force replace running pod')
+    .action(async (flags, args) => {
+      console.log(`Deploying to ${flags.env}... target: ${args[0]}`);
+    });
+});
+
+app.command('rollback', (sub) => {
+  sub.setDescription('Rollback service to previous revision')
+    .addFlagInt('revision', 'r', 1, 'Target revision ID')
+    .action(async (flags) => {
+      console.log(`Rolling back to revision ${flags.revision}...`);
+    });
+});
+
+await app.run();
+```
+
+---
+
+## 9. Zero-Config Persistent Storage (`app.config`)
+
+Store auth tokens, user preferences, and state automatically in standard OS config paths (`~/.config/<app>/config.json`):
+
+```typescript
+// Nested key-value manipulation with automatic JSON persistence
+app.config.set('auth.token', 'eyJhGciOi...');
+app.config.set('theme.dark', true);
+
+const token = app.config.get('auth.token');
+const isDark = app.config.get('theme.dark', false);
+
+if (app.config.has('auth.token')) {
+  // Config exists
+}
+
+app.config.delete('auth.token');
+app.config.clear();
+```
+
+---
+
+## 10. Interactive File Explorer Picker
+
+Interactive directory and file explorer navigation right inside the terminal:
+
+```typescript
+const selectedFile = await app.filePicker('Choose input data file:', {
+  baseDir: './data',
+  extensions: ['.json', '.csv'],
+  mode: PathMode.FILE,
+});
+```
+
+---
+
+## 11. Shell Auto-Completion Generator
+
+Generate tab auto-completion scripts for `bash`, `zsh`, and `fish` directly from your command and flag definitions:
+
+```typescript
+// Generate raw completion script
+const zshScript = app.generateCompletions('zsh');
+const bashScript = app.generateCompletions('bash');
+const fishScript = app.generateCompletions('fish');
+
+// Or invoke the built-in dispatcher completion
+// simplcli completion zsh > ~/.zsh/completions/_simplcli
+```
+
+---
+
+## 12. Typo Suggestions ("Did You Mean?")
+
+SimpleCLI automatically detects mistyped subcommands and flags using Levenshtein distance:
+
+```bash
+$ simplcli doker
+Unknown CLI application "doker".
+💡 Did you mean "docker_cli"?
+Run "simplcli --list" to view all available tools.
+```
+
+---
+
+## 13. Documentation Generator & Standalone Binary Compilation
+
+```typescript
+// Generate Markdown Documentation
+const markdownDocs = app.generateMarkdownDocs();
+
+// Generate UNIX Roff Man Page
+const manPage = app.generateManPage();
+
+// Compile application to standalone single-file binary with Bun
+await SimpleCLI.compileBinary('./bin/simplcli.ts', './dist/simplcli-bin');
+```
+
