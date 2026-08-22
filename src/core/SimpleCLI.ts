@@ -8,6 +8,7 @@ import { Prompts } from './prompts.ts';
 import { Pipeline } from './pipeline.ts';
 import { ConfigStore } from './config.ts';
 import { NamespacedRedis, type NamespacedRedisOptions } from './redis.ts';
+import { Sys } from '../sys/index.ts';
 import {
   LogLevel,
   type LogLevelName,
@@ -1232,6 +1233,54 @@ complete -F _${this.appName.toLowerCase()}_completions ${this.appName.toLowerCas
   }
 
   // ===========================================================================
+  // Bun System & File Helpers
+  // ===========================================================================
+
+  public which(binName: string): string | null {
+    return Sys.which(binName);
+  }
+
+  public hasBinary(binName: string): boolean {
+    return Sys.hasBinary(binName);
+  }
+
+  public async sleep(ms: number): Promise<void> {
+    return Sys.sleep(ms);
+  }
+
+  public async readFile(filePath: string): Promise<string> {
+    return Sys.readText(filePath);
+  }
+
+  public readFileSync(filePath: string): string {
+    return Sys.readTextSync(filePath);
+  }
+
+  public async readJson<T = any>(filePath: string, fallback?: T): Promise<T> {
+    return Sys.readJson<T>(filePath, fallback);
+  }
+
+  public async writeFile(filePath: string, content: string | Uint8Array): Promise<number> {
+    return Sys.write(filePath, content);
+  }
+
+  public async writeJson(filePath: string, data: any, indent: number = 2): Promise<number> {
+    return Sys.writeJson(filePath, data, indent);
+  }
+
+  public measure<T>(fn: () => T): { result: T; durationMs: number; durationNs: number } {
+    return Sys.measure(fn);
+  }
+
+  public async measureAsync<T>(fn: () => Promise<T>): Promise<{ result: T; durationMs: number; durationNs: number }> {
+    return Sys.measureAsync(fn);
+  }
+
+  public serveStatic(directory: string, port: number = 3000): any {
+    return Sys.serveStatic(directory, port);
+  }
+
+  // ===========================================================================
   // Standalone Single-Binary Compilation
   // ===========================================================================
 
@@ -1244,4 +1293,5 @@ complete -F _${this.appName.toLowerCase()}_completions ${this.appName.toLowerCas
     return proc.status === 0;
   }
 }
+
 

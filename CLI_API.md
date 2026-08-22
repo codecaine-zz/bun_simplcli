@@ -743,25 +743,138 @@ const success = await pipeline.run();
 
 ## 6. Hardware Telemetry & System Utilities (`sys`)
 
+### Hardware Telemetry & Resource Probing
+
 ```typescript
 import { sys } from 'bun-simplcli';
 
 const cpuCount = sys.cpuCount();
-const cpuLoad = sys.cpuLoad();
+const cpuLoad = sys.cpuLoad(); // [1m, 5m, 15m]
 const ramTotal = sys.ramTotal();
 const ramUsed = sys.ramUsed();
+const ramFree = sys.ramFree();
 const uptime = sys.osUptime();
 const localIp = sys.localIp();
 const wifi = sys.wifiSsid();
+const hostname = sys.osHostname();
 
-// Desktop notifications & speech
+// Desktop notifications & speech synthesis
 sys.notify('Build Complete', 'All 54 CLI applications compiled successfully.');
 sys.say('Build succeeded');
 
-// Process management
+// Process management & execution
 const [output, exitCode] = sys.exec('git status');
 const isPortOpen = await sys.checkPort('127.0.0.1', 8080);
 const openPorts = await sys.portScan('127.0.0.1', 20, 100);
+```
+
+### Native High-Speed File I/O (Bun.file & Bun.write)
+
+Zero-boilerplate, asynchronous & synchronous file operations powered by Bun's native C++ engine:
+
+```typescript
+// Fast asynchronous reads (UTF-8, JSON, Raw Bytes)
+const text = await sys.readText('./config.yaml');
+const config = await sys.readJson<{ port: number }>('./config.json', { port: 3000 });
+const bytes = await sys.readBytes('./binary.dat');
+
+// Fast asynchronous writes & JSON serialization
+await sys.write('./output.txt', 'Hello Bun Native I/O');
+await sys.writeJson('./settings.json', { theme: 'dark', retries: 3 });
+await sys.append('./activity.log', '2026-08-22 User logged in\n');
+
+// File metadata & inspection
+const exists = await sys.fileExists('./bundle.js');
+const size = sys.fileSize('./bundle.js'); // in bytes
+const mime = sys.fileMime('./data.csv');   // 'text/csv'
+sys.ensureDir('./dist/assets');            // Recursive mkdir
+sys.deleteFile('./temp.log');             // Safe unlink
+```
+
+### Binary Resolution & Environment Probing (`Bun.which` & `Bun.env`)
+
+```typescript
+// Check and locate external binaries in PATH
+const ffmpegPath = sys.which('ffmpeg'); // e.g. '/opt/homebrew/bin/ffmpeg' or null
+const hasDocker = sys.hasBinary('docker'); // boolean
+
+// Typed environment variables
+const port = sys.getEnv('PORT', '3000');
+sys.setEnv('DEBUG', '1');
+const secret = sys.requireEnv('DATABASE_URL'); // throws if missing
+```
+
+### High-Precision Time & Benchmarking
+
+```typescript
+// High-precision nanosecond timer & async sleep
+const startNs = sys.nanoseconds();
+await sys.sleep(100); // 100ms non-blocking sleep via Bun.sleep
+
+// Benchmark synchronous & asynchronous execution
+const syncBench = sys.measure(() => {
+  return Array.from({ length: 10000 }).map((_, i) => i * 2);
+});
+console.log(`Computed in ${syncBench.durationMs} ms (${syncBench.durationNs} ns)`);
+
+const asyncBench = await sys.measureAsync(async () => {
+  return await fetch('https://api.github.com');
+});
+console.log(`HTTP request completed in ${asyncBench.durationMs} ms`);
+```
+
+### Fast Checksums, Hashing & Native Compression
+
+```typescript
+// Native 64-bit non-cryptographic fast hashing & checksums
+const fastHash = sys.fastHash('payload_data'); // Wyhash / xxHash
+const crc = sys.crc32('payload_data');
+const adler = sys.adler32('payload_data');
+
+// High-speed native Gzip & Deflate compression
+const compressed = sys.gzip('Large text or log stream');
+const decompressed = sys.gunzip(compressed);
+
+const deflated = sys.deflate('Payload bytes');
+const inflated = sys.inflate(deflated);
+```
+
+### Instant Micro HTTP Server & Static File Server (`Bun.serve`)
+
+Spin up lightweight servers directly from CLI scripts:
+
+```typescript
+// 1. Instant Static File Web Server
+const server = sys.serveStatic('./public', 8080);
+console.log('Serving ./public on http://localhost:8080');
+
+// 2. Custom Micro REST / Health Server
+sys.serve({
+  port: 4000,
+  fetch(req) {
+    const url = new URL(req.url);
+    if (url.pathname === '/health') return Response.json({ status: 'ok' });
+    return new Response('SimpleCLI Micro Server');
+  },
+});
+```
+
+### App-Instance Helpers (`app.*`)
+
+All these system utilities are also accessible directly on your `app` instance:
+
+```typescript
+const app = SimpleCLI.newApp('myapp');
+
+const hasGit = app.hasBinary('git');
+const gitPath = app.which('git');
+await app.writeFile('./output.json', JSON.stringify({ ok: true }));
+const data = await app.readJson('./output.json');
+await app.sleep(500);
+
+const bench = await app.measureAsync(async () => {
+  // run task...
+});
 ```
 
 ---

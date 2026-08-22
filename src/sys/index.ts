@@ -7,6 +7,8 @@ import * as os from 'node:os';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as net from 'node:net';
+import * as dns from 'node:dns';
+import * as zlib from 'node:zlib';
 import { spawnSync, spawn } from 'node:child_process';
 
 export class Sys {
@@ -558,6 +560,372 @@ export class Sys {
     const [_, code] = Sys.exec(`${cmd} "${urlOrPath}"`);
     return code === 0;
   }
+
+  // ===========================================================================
+  // 6. Native High-Speed File I/O Ergonomics (Bun.file & Bun.write)
+  // ===========================================================================
+
+  public static async readText(filePath: string): Promise<string> {
+    const full = Sys.expandTilde(filePath);
+    if (typeof (Bun as any)?.file === 'function') {
+      return await (Bun as any).file(full).text();
+    }
+    return fs.promises.readFile(full, 'utf8');
+  }
+
+  public static readTextSync(filePath: string): string {
+    const full = Sys.expandTilde(filePath);
+    return fs.readFileSync(full, 'utf8');
+  }
+
+  public static async readJson<T = any>(filePath: string, fallback?: T): Promise<T> {
+    try {
+      const full = Sys.expandTilde(filePath);
+      if (typeof (Bun as any)?.file === 'function') {
+        return (await (Bun as any).file(full).json()) as T;
+      }
+      const raw = await fs.promises.readFile(full, 'utf8');
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      if (fallback !== undefined) return fallback;
+      throw err;
+    }
+  }
+
+  public static readJsonSync<T = any>(filePath: string, fallback?: T): T {
+    try {
+      const full = Sys.expandTilde(filePath);
+      const raw = fs.readFileSync(full, 'utf8');
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      if (fallback !== undefined) return fallback;
+      throw err;
+    }
+  }
+
+  public static async readBytes(filePath: string): Promise<Uint8Array> {
+    const full = Sys.expandTilde(filePath);
+    if (typeof (Bun as any)?.file === 'function') {
+      return await (Bun as any).file(full).bytes();
+    }
+    const buf = await fs.promises.readFile(full);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
+
+  public static async write(filePath: string, data: string | Uint8Array | ArrayBuffer | Blob): Promise<number> {
+    const full = Sys.expandTilde(filePath);
+    const dir = path.dirname(full);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    if (typeof (Bun as any)?.write === 'function') {
+      return await (Bun as any).write(full, data);
+    }
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data as any);
+    await fs.promises.writeFile(full, buf);
+    return buf.byteLength;
+  }
+
+  public static writeSync(filePath: string, data: string | Uint8Array | ArrayBuffer): void {
+    const full = Sys.expandTilde(filePath);
+    const dir = path.dirname(full);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data as any);
+    fs.writeFileSync(full, buf);
+  }
+
+  public static async writeJson(filePath: string, data: any, indent: number = 2): Promise<number> {
+    const jsonStr = JSON.stringify(data, null, indent);
+    return await Sys.write(filePath, jsonStr);
+  }
+
+  public static async append(filePath: string, data: string | Uint8Array): Promise<void> {
+    const full = Sys.expandTilde(filePath);
+    const dir = path.dirname(full);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    await fs.promises.appendFile(full, data as any);
+  }
+
+  public static async fileExists(filePath: string): Promise<boolean> {
+    const full = Sys.expandTilde(filePath);
+    if (typeof (Bun as any)?.file === 'function') {
+      return await (Bun as any).file(full).exists();
+    }
+    return fs.existsSync(full);
+  }
+
+  public static fileSize(filePath: string): number {
+    const full = Sys.expandTilde(filePath);
+    if (typeof (Bun as any)?.file === 'function') {
+      return (Bun as any).file(full).size;
+    }
+    try {
+      return fs.statSync(full).size;
+    } catch {
+      return 0;
+    }
+  }
+
+  public static fileMime(filePath: string): string {
+    const full = Sys.expandTilde(filePath);
+    if (typeof (Bun as any)?.file === 'function') {
+      return (Bun as any).file(full).type || 'application/octet-stream';
+    }
+    const ext = path.extname(full).toLowerCase();
+    const map: Record<string, string> = {
+      '.json': 'application/json',
+      '.txt': 'text/plain',
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.ts': 'application/typescript',
+      '.csv': 'text/csv',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.svg': 'image/svg+xml',
+    };
+    return map[ext] || 'application/octet-stream';
+  }
+
+  public static deleteFile(filePath: string): boolean {
+    try {
+      const full = Sys.expandTilde(filePath);
+      if (fs.existsSync(full)) {
+        fs.unlinkSync(full);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  public static ensureDir(dirPath: string): void {
+    const full = Sys.expandTilde(dirPath);
+    if (!fs.existsSync(full)) {
+      fs.mkdirSync(full, { recursive: true });
+    }
+  }
+
+  // ===========================================================================
+  // 7. Binary Resolution & Environment Probing (Bun.which & Bun.env)
+  // ===========================================================================
+
+  public static which(binName: string): string | null {
+    if (typeof (Bun as any)?.which === 'function') {
+      return (Bun as any).which(binName);
+    }
+    const [out, code] = Sys.exec(`which "${binName}"`);
+    return code === 0 && out ? out.trim() : null;
+  }
+
+  public static hasBinary(binName: string): boolean {
+    return Sys.which(binName) !== null;
+  }
+
+  public static getEnv(key: string, defaultVal: string = ''): string {
+    return process.env[key] ?? ((Bun as any)?.env?.[key] || defaultVal);
+  }
+
+  public static setEnv(key: string, value: string): void {
+    process.env[key] = value;
+    if ((Bun as any)?.env) {
+      (Bun as any).env[key] = value;
+    }
+  }
+
+  public static requireEnv(key: string): string {
+    const val = Sys.getEnv(key);
+    if (!val) {
+      throw new Error(`Required environment variable "${key}" is not defined.`);
+    }
+    return val;
+  }
+
+  // ===========================================================================
+  // 8. High-Precision Time, Benchmarking & Async Sleep
+  // ===========================================================================
+
+  public static async sleep(ms: number): Promise<void> {
+    if (typeof (Bun as any)?.sleep === 'function') {
+      await (Bun as any).sleep(ms);
+    } else {
+      await new Promise((r) => setTimeout(r, ms));
+    }
+  }
+
+  public static nanoseconds(): number {
+    if (typeof (Bun as any)?.nanoseconds === 'function') {
+      return (Bun as any).nanoseconds();
+    }
+    return Math.round(performance.now() * 1_000_000);
+  }
+
+  public static measure<T>(fn: () => T): { result: T; durationMs: number; durationNs: number } {
+    const start = Sys.nanoseconds();
+    const result = fn();
+    const durationNs = Sys.nanoseconds() - start;
+    return { result, durationMs: Number((durationNs / 1_000_000).toFixed(3)), durationNs };
+  }
+
+  public static async measureAsync<T>(fn: () => Promise<T>): Promise<{ result: T; durationMs: number; durationNs: number }> {
+    const start = Sys.nanoseconds();
+    const result = await fn();
+    const durationNs = Sys.nanoseconds() - start;
+    return { result, durationMs: Number((durationNs / 1_000_000).toFixed(3)), durationNs };
+  }
+
+  // ===========================================================================
+  // 9. Fast Checksums, Hashing & Native Compression
+  // ===========================================================================
+
+  public static fastHash(data: string | Uint8Array, seed?: number): string {
+    if (typeof (Bun as any)?.hash === 'function') {
+      const h = (Bun as any).hash(data, seed);
+      return h.toString(16);
+    }
+    return Sys.crc32(data).toString(16);
+  }
+
+  public static crc32(data: string | Uint8Array): number {
+    if (typeof (Bun as any)?.hash?.crc32 === 'function') {
+      return (Bun as any).hash.crc32(data);
+    }
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data);
+    return zlib.crc32(buf);
+  }
+
+  public static adler32(data: string | Uint8Array): number {
+    if (typeof (Bun as any)?.hash?.adler32 === 'function') {
+      return (Bun as any).hash.adler32(data);
+    }
+    let a = 1, b = 0;
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
+    for (let i = 0; i < buf.length; i++) {
+      a = (a + buf[i]) % 65521;
+      b = (b + a) % 65521;
+    }
+    return (b << 16) | a;
+  }
+
+  public static gzip(data: string | Uint8Array): Uint8Array {
+    if (typeof (Bun as any)?.gzipSync === 'function') {
+      const input = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
+      return (Bun as any).gzipSync(input);
+    }
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data);
+    return new Uint8Array(zlib.gzipSync(buf));
+  }
+
+  public static gunzip(data: Uint8Array): Uint8Array {
+    if (typeof (Bun as any)?.gunzipSync === 'function') {
+      return (Bun as any).gunzipSync(data);
+    }
+    return new Uint8Array(zlib.gunzipSync(Buffer.from(data)));
+  }
+
+  public static deflate(data: string | Uint8Array): Uint8Array {
+    if (typeof (Bun as any)?.deflateSync === 'function') {
+      const input = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
+      return (Bun as any).deflateSync(input);
+    }
+    const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data);
+    return new Uint8Array(zlib.deflateSync(buf));
+  }
+
+  public static inflate(data: Uint8Array): Uint8Array {
+    if (typeof (Bun as any)?.inflateSync === 'function') {
+      return (Bun as any).inflateSync(data);
+    }
+    return new Uint8Array(zlib.inflateSync(Buffer.from(data)));
+  }
+
+  // ===========================================================================
+  // 10. Semver Engine & Bun Runtime Info
+  // ===========================================================================
+
+  public static bunVersion(): string {
+    return (typeof Bun !== 'undefined' && Bun?.version) ? Bun.version : process.version;
+  }
+
+  public static bunRevision(): string {
+    return (typeof Bun !== 'undefined' && (Bun as any)?.revision) ? (Bun as any).revision : '';
+  }
+
+  public static semverSatisfies(version: string, range: string): boolean {
+    if (typeof (Bun as any)?.semver?.satisfies === 'function') {
+      return (Bun as any).semver.satisfies(version, range);
+    }
+    // Simple basic fallback comparison for ^ or >=
+    const cleanV = version.replace(/^v/, '');
+    const cleanR = range.replace(/^[\^~>=<]+/, '');
+    return cleanV.localeCompare(cleanR, undefined, { numeric: true }) >= 0;
+  }
+
+  public static semverCompare(v1: string, v2: string): number {
+    if (typeof (Bun as any)?.semver?.order === 'function') {
+      return (Bun as any).semver.order(v1, v2);
+    }
+    return v1.localeCompare(v2, undefined, { numeric: true });
+  }
+
+  // ===========================================================================
+  // 11. Instant Micro HTTP Server & Static File Server (Bun.serve)
+  // ===========================================================================
+
+  public static serve(options: {
+    port?: number;
+    hostname?: string;
+    fetch: (req: Request) => Response | Promise<Response>;
+  }): any {
+    if (typeof (Bun as any)?.serve === 'function') {
+      return (Bun as any).serve({
+        port: options.port ?? 3000,
+        hostname: options.hostname ?? '0.0.0.0',
+        fetch: options.fetch,
+      });
+    }
+    throw new Error('sys.serve requires Bun runtime.');
+  }
+
+  public static serveStatic(directory: string, port: number = 3000): any {
+    const fullDir = Sys.expandTilde(directory);
+    if (!fs.existsSync(fullDir)) {
+      throw new Error(`Directory "${fullDir}" does not exist.`);
+    }
+
+    if (typeof (Bun as any)?.serve === 'function') {
+      return (Bun as any).serve({
+        port,
+        fetch(req: Request) {
+          const url = new URL(req.url);
+          let reqPath = url.pathname;
+          if (reqPath.endsWith('/')) reqPath += 'index.html';
+          const target = path.join(fullDir, reqPath);
+          const file = (Bun as any).file(target);
+          return new Response(file);
+        },
+      });
+    }
+    throw new Error('sys.serveStatic requires Bun runtime.');
+  }
+
+  // ===========================================================================
+  // 12. Fast DNS Resolution (Bun.dns / dns.promises)
+  // ===========================================================================
+
+  public static async dnsLookup(hostname: string): Promise<string[]> {
+    try {
+      if (typeof (Bun as any)?.dns?.lookup === 'function') {
+        const res = await (Bun as any).dns.lookup(hostname);
+        return res ? [res.address] : [];
+      }
+      const records = await dns.promises.lookup(hostname, { all: true });
+      return records.map((r: any) => r.address);
+    } catch {
+      return [];
+    }
+  }
 }
 
 export const sys = Sys;
+
