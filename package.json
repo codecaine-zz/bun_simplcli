@@ -1,0 +1,34 @@
+{
+  "name": "bun-simplcli",
+  "version": "1.0.0",
+  "description": "Comprehensive zero-dependency headless console & RAD toolkit for Bun with rich UI, telemetry, and utilities",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "simplcli": "./bin/simplcli.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "start": "bun run bin/simplcli.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun"
+  },
+  "keywords": [
+    "bun",
+    "cli",
+    "terminal",
+    "console",
+    "rad",
+    "prompts",
+    "tables",
+    "spinners",
+    "sparklines",
+    "telemetry",
+    "zero-dependencies"
+  ],
+  "author": "codecaine",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

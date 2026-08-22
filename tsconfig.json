@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["bun-types"],
+    "lib": ["ESNext", "DOM"],
+    "declaration": true,
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*", "cli_apps/**/*", "bin/**/*", "test/**/*"]
+}
