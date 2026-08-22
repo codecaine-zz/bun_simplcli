@@ -33,9 +33,9 @@ function getListeningPorts(): PortEntry[] {
 
   try {
     if (isMac || isLinux) {
-      const res = Sys.exec('lsof -iTCP -sTCP:LISTEN -P -n', 3000);
-      if (res.exitCode === 0) {
-        const lines = res.output.trim().split('\n');
+      const [out, code] = Sys.exec('lsof -iTCP -sTCP:LISTEN -P -n');
+      if (code === 0) {
+        const lines = out.trim().split('\n');
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].split(/\s+/);
           if (parts.length >= 9) {

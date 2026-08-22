@@ -208,6 +208,18 @@ export class Sys {
     return os.release();
   }
 
+  public static osHostname(): string {
+    return os.hostname();
+  }
+
+  public static osHomedir(): string {
+    return os.homedir();
+  }
+
+  public static osTmpdir(): string {
+    return os.tmpdir();
+  }
+
   public static osUptime(): number {
     return os.uptime();
   }

@@ -459,12 +459,18 @@ export class SimpleCLI {
   // Console UI & ANSI Color RAD Components
   // ===========================================================================
 
-  public print(text: string): void {
-    if (!this.silentMode) process.stdout.write(text);
+  public print(...args: any[]): void {
+    if (!this.silentMode) {
+      if (args.length === 0) return;
+      process.stdout.write(args.map(a => typeof a === 'string' ? a : String(a)).join(' '));
+    }
   }
 
-  public println(text: string = ''): void {
-    if (!this.silentMode) console.log(text);
+  public println(...args: any[]): void {
+    if (!this.silentMode) {
+      if (args.length === 0) console.log('');
+      else console.log(...args);
+    }
   }
 
   public bold(t: string): string { return this.noColor ? t : Ansi.bold(t); }

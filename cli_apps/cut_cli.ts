@@ -19,9 +19,9 @@ let input = '';
 if (filePath && fs.existsSync(filePath)) {
   input = fs.readFileSync(filePath, 'utf8');
 } else {
-  input = 'Alice	28	Engineer
-Bob	34	Designer
-Charlie	22	DevOps';
+  input = `Alice\t28\tEngineer
+Bob\t34\tDesigner
+Charlie\t22\tDevOps`;
 }
 
 const lines = input.trim().split('\n');

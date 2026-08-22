@@ -160,13 +160,13 @@ export class NamespacedRedis {
   public async del(...keys: string[]): Promise<number> {
     if (keys.length === 0) return 0;
     const fullKeys = keys.map(k => this.prefixKey(k));
-    return (await this.client.del(...fullKeys)) as number;
+    return (await (this.client as any).del(...fullKeys)) as number;
   }
 
   public async exists(...keys: string[]): Promise<number> {
     if (keys.length === 0) return 0;
     const fullKeys = keys.map(k => this.prefixKey(k));
-    return (await this.client.exists(...fullKeys)) as number;
+    return (await (this.client as any).exists(...fullKeys)) as number;
   }
 
   public async expire(key: string, seconds: number): Promise<number> {
@@ -258,7 +258,7 @@ export class NamespacedRedis {
 
   public async hdel(key: string, ...fields: string[]): Promise<number> {
     if (fields.length === 0) return 0;
-    return (await this.client.hdel(this.prefixKey(key), ...fields)) as number;
+    return (await (this.client as any).hdel(this.prefixKey(key), ...fields)) as number;
   }
 
   public async hexists(key: string, field: string): Promise<boolean> {
@@ -290,13 +290,13 @@ export class NamespacedRedis {
   public async lpush(key: string, ...values: (string | number)[]): Promise<number> {
     if (values.length === 0) return 0;
     const valStrs = values.map(String);
-    return (await this.client.lpush(this.prefixKey(key), ...valStrs)) as number;
+    return (await (this.client as any).lpush(this.prefixKey(key), ...valStrs)) as number;
   }
 
   public async rpush(key: string, ...values: (string | number)[]): Promise<number> {
     if (values.length === 0) return 0;
     const valStrs = values.map(String);
-    return (await this.client.rpush(this.prefixKey(key), ...valStrs)) as number;
+    return (await (this.client as any).rpush(this.prefixKey(key), ...valStrs)) as number;
   }
 
   public async lpop(key: string): Promise<string | null> {
@@ -326,13 +326,13 @@ export class NamespacedRedis {
   public async sadd(key: string, ...members: (string | number)[]): Promise<number> {
     if (members.length === 0) return 0;
     const memberStrs = members.map(String);
-    return (await this.client.sadd(this.prefixKey(key), ...memberStrs)) as number;
+    return (await (this.client as any).sadd(this.prefixKey(key), ...memberStrs)) as number;
   }
 
   public async srem(key: string, ...members: (string | number)[]): Promise<number> {
     if (members.length === 0) return 0;
     const memberStrs = members.map(String);
-    return (await this.client.srem(this.prefixKey(key), ...memberStrs)) as number;
+    return (await (this.client as any).srem(this.prefixKey(key), ...memberStrs)) as number;
   }
 
   public async smembers(key: string): Promise<string[]> {
@@ -363,7 +363,7 @@ export class NamespacedRedis {
 
   public async zrem(key: string, ...members: string[]): Promise<number> {
     if (members.length === 0) return 0;
-    return (await this.client.zrem(this.prefixKey(key), ...members)) as number;
+    return (await (this.client as any).zrem(this.prefixKey(key), ...members)) as number;
   }
 
   public async zscore(key: string, member: string): Promise<string | null> {

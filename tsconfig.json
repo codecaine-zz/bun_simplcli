@@ -7,10 +7,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["bun-types"],
-    "lib": ["ESNext", "DOM"],
-    "declaration": true,
-    "outDir": "./dist"
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["@types/bun"],
+    "lib": ["ESNext", "DOM"]
   },
-  "include": ["src/**/*", "cli_apps/**/*", "bin/**/*", "test/**/*"]
+  "include": ["src/**/*", "cli_apps/**/*", "bin/**/*", "test/**/*", "templates/**/*"]
 }

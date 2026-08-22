@@ -465,6 +465,10 @@ export class Stdlib {
     return `${b.toFixed(2)} ${units[u]}`;
   }
 
+  public static formatBytes(bytes: number): string {
+    return Stdlib.humanSize(bytes);
+  }
+
   public static humanDuration(ms: number): string {
     if (ms < 1000) return `${ms} ms`;
     const seconds = Math.floor(ms / 1000);
@@ -478,6 +482,10 @@ export class Stdlib {
     const days = Math.floor(hours / 24);
     const remHours = hours % 24;
     return `${days}d ${remHours}h`;
+  }
+
+  public static formatDuration(ms: number): string {
+    return Stdlib.humanDuration(ms);
   }
 
   public static timeAgo(dateOrTimestamp: Date | number): string {

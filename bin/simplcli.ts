@@ -48,7 +48,7 @@ if (args[0] === 'compile') {
   const entrypoint = path.join(cliAppsDir, `${matching}.ts`);
   const outfile = args[2] && !args[2].startsWith('-') ? args[2] : path.resolve(process.cwd(), matching);
   console.log(Ansi.cyan(`Compiling ${matching} to standalone executable at ${outfile}...`));
-  const success = SimpleCLI.compileBinary(entrypoint, outfile);
+  const success = await SimpleCLI.compileBinary(entrypoint, outfile);
   if (success) {
     console.log(Ansi.green(`✔ Successfully compiled standalone binary: ${outfile}`));
   } else {

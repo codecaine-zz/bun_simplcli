@@ -53,7 +53,9 @@ export class ConfigStore {
     writeFileSync(this.configPath, JSON.stringify(this.data, null, 2), 'utf8');
   }
 
-  public get<T = any>(key: string, defaultVal?: T): T {
+  public get(key: string): any;
+  public get<T>(key: string, defaultVal: T): T;
+  public get<T = any>(key: string, defaultVal?: T): any {
     if (key.includes('.')) {
       const parts = key.split('.');
       let curr: any = this.data;

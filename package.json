@@ -22,6 +22,7 @@
     "src",
     "bin",
     "cli_apps",
+    "templates",
     "README.md",
     "CLI_API.md",
     "LICENSE"
