@@ -1,6 +1,6 @@
 {
   "name": "bun-simplcli",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Comprehensive zero-dependency headless console & RAD toolkit for Bun with rich UI, telemetry, redis, and 54 CLI tools",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,8 +14,8 @@
     }
   },
   "bin": {
-    "simplcli": "./bin/simplcli.ts",
-    "bun-simplcli": "./bin/simplcli.ts"
+    "simplcli": "./bin/simplcli.js",
+    "bun-simplcli": "./bin/simplcli.js"
   },
   "files": [
     "dist",

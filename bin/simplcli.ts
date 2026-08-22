@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 
-const app = SimpleCLI.newApp('simplcli', '1.3.0')
+const app = SimpleCLI.newApp('simplcli', '1.4.0')
   .setDescription('Unified Dispatcher & Interactive Terminal Suite for Bun (54 Production Tools)');
 
 app.addFlagBool('list', 'l', false, 'List all 54 pre-built CLI applications');
