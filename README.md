@@ -70,6 +70,10 @@ vhs scripts/tapes/redis.tape
 - [Live Demos & Terminal Recordings](#-live-demos--terminal-recordings)
 - [Features](#-features)
 - [Installation & Setup](#-installation--setup)
+  - [Install as a Library in Your Project](#install-as-a-library-in-your-project)
+  - [Install Globally as a CLI Suite](#install-globally-as-a-cli-suite-54-tools)
+  - [Local Development & Source Setup](#local-development--source-setup)
+  - [Homebrew & Subprocess Dependencies Setup](#homebrew--subprocess-dependencies-setup)
 - [Quick Start](#-quick-start)
 - [Console UI & RAD Components](#-console-ui--rad-components)
   - [Terminal ANSI & TrueColor Styling](#terminal-ansi--truecolor-styling)
@@ -84,7 +88,8 @@ vhs scripts/tapes/redis.tape
   - [Multi-Step Task Pipeline Runner](#multi-step-task-pipeline-runner)
 - [Hardware & Telemetry](#-hardware--telemetry)
 - [Extended Standard Library](#-extended-standard-library)
-- [Complete Suite of 49 CLI Applications](#-complete-suite-of-49-cli-applications)
+- [Complete Suite of 54 CLI Applications](#-complete-suite-of-54-cli-applications)
+  - [Subprocess Engine Dependency Map](#subprocess-engine-dependency-map)
 - [Running Tests](#-running-tests)
 - [API Reference](#-api-reference)
 
@@ -143,6 +148,45 @@ bun test
 
 # Launch the unified CLI suite
 bun run start
+```
+
+### Homebrew & Subprocess Dependencies Setup
+
+While the core SimpleCLI library is **100% zero-dependency**, certain pre-built CLI applications in `cli_apps/` leverage external system utilities (e.g. `ffmpeg`, `ripgrep`, `fd`, `jq`, `redis`, `imagemagick`, `tesseract`, `pandoc`, `vhs`, `qalc`, `numbat`, `kalker`, `nmap`) via fast subprocess execution.
+
+An automated dependency installer script is included to install Homebrew (if missing) and all required toolchains:
+
+```bash
+# Check existing tool status without installing
+bun run check:deps
+# or: ./scripts/install_dependencies.sh --check
+
+# Interactive setup wizard
+bun run setup:brew
+# or: ./scripts/install_dependencies.sh
+
+# Install all dependencies for all 54 CLI tools + VHS recordings
+bun run setup:brew:all
+# or: ./scripts/install_dependencies.sh --all
+```
+
+#### Selective Installation Profiles:
+
+```bash
+# Install core essentials (ripgrep, fd, jq, ffmpeg, redis)
+./scripts/install_dependencies.sh --essential
+
+# Install media & OCR processing tools (ffmpeg, yt-dlp, imagemagick, tesseract, exiftool, id3v2)
+./scripts/install_dependencies.sh --media
+
+# Install scientific & calculus tools (libqalculate, numbat, kalker)
+./scripts/install_dependencies.sh --math
+
+# Install network reconnaissance & security tools (nmap, subfinder)
+./scripts/install_dependencies.sh --security
+
+# Install terminal GIF recorder & tape generator (vhs, ttyd)
+./scripts/install_dependencies.sh --vhs
 ```
 
 
@@ -310,6 +354,35 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `vault_backup_manager` | Encrypted backup & restore manager (AES-256) |
 | `wget2_cli` | Fast HTTP file downloader with progress bar |
 | `yt_dlp_cli` | Media download orchestrator & quality preset engine |
+
+### 🧩 Subprocess Engine Dependency Map
+
+For CLI applications that interface with external engines via subprocesses, the corresponding Homebrew formulas can be installed individually or in bulk via `./scripts/install_dependencies.sh --all`:
+
+| CLI Application | Homebrew Formula | Underlying Binary | Profile | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `rg_cli` | `ripgrep` | `rg` | `--essential` | Fast recursive regex code and text search |
+| `fd_cli` | `fd` | `fd` | `--essential` | Fast directory traversal and filesystem search |
+| `jq_cli` | `jq` | `jq` | `--essential` | Command-line JSON processor and filter |
+| `ffmpeg_cli` | `ffmpeg` | `ffmpeg` | `--essential` / `--media` | Video/audio transcoding and encoding engine |
+| `redis_cli` | `redis` | `redis-server` | `--essential` | In-memory multi-tenant key-value database |
+| `imagemagick_cli` | `imagemagick` | `magick` | `--media` | Batch image manipulation and format converter |
+| `ocr_cli` | `tesseract` | `tesseract` | `--media` | Optical character recognition text extraction |
+| `yt_dlp_cli` | `yt-dlp` | `yt-dlp` | `--media` | Video and audio streaming downloader |
+| `exif_cli` | `exiftool` | `exiftool` | `--media` | Read, write, and manipulate EXIF metadata |
+| `audiotag_cli` | `id3v2` | `id3v2` | `--media` | Audio file ID3 metadata inspector & editor |
+| `pandoc_cli` | `pandoc` | `pandoc` | `--all` | Universal markup and document format converter |
+| `ouch_cli` | `ouch` | `ouch` | `--all` | Compression & decompression helper (zip, tar, 7z) |
+| `wget2_cli` | `wget` | `wget` | `--all` | Network file downloader with resume capability |
+| `gawk_cli` | `gawk` | `gawk` | `--all` | Pattern scanning and text processing engine |
+| `sd_cli` | `sd` | `sd` | `--all` | Intuitive search & replace with regex |
+| `sqlite_cli` | `sqlite` | `sqlite3` | `--all` | SQLite database engine and shell |
+| `nmap_cli` | `nmap` | `nmap` | `--security` | Network port scanner & service discovery tool |
+| `subfinder_cli` | `subfinder` | `subfinder` | `--security` | Fast passive subdomain discovery |
+| `qalc_cli` | `libqalculate` | `qalc` | `--math` | Multi-purpose algebraic calculator engine |
+| `numbat_cli` | `numbat` | `numbat` | `--math` | Scientific unit & dimensional physics calculator |
+| `kalker_cli` | `kalker` | `kalker` | `--math` | Full-featured scientific and calculus calculator |
+| `terminal_recorder_studio` | `charmbracelet/tap/vhs` | `vhs`, `ttyd` | `--vhs` | Automated terminal GIF & video recorder |
 
 ---
 

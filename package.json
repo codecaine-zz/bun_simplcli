@@ -30,6 +30,9 @@
     "test": "bun test",
     "start": "bun run bin/simplcli.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "setup:brew": "bash ./scripts/install_dependencies.sh",
+    "setup:brew:all": "bash ./scripts/install_dependencies.sh --all",
+    "check:deps": "bash ./scripts/install_dependencies.sh --check",
     "prepublishOnly": "bun test && bun run build"
   },
   "repository": {
