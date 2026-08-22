@@ -8,10 +8,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 
-const app = SimpleCLI.newApp('simplcli', '1.1.0')
-  .setDescription('Unified Dispatcher & Interactive Terminal Suite for Bun (53 Production Tools)');
+const app = SimpleCLI.newApp('simplcli', '1.2.0')
+  .setDescription('Unified Dispatcher & Interactive Terminal Suite for Bun (54 Production Tools)');
 
-app.addFlagBool('list', 'l', false, 'List all 53 pre-built CLI applications');
+app.addFlagBool('list', 'l', false, 'List all 54 pre-built CLI applications');
 app.addFlagString('completion', 'c', '', 'Generate shell auto-completion script (zsh, bash, fish)');
 
 const args = process.argv.slice(2);
@@ -59,7 +59,7 @@ if (args[0] === 'compile') {
 }
 
 if (args.length === 0 || args[0] === '-l' || args[0] === '--list') {
-  app.banner('SimpleCLI Toolkit for Bun', '53 Zero-Dependency Production CLI Tools');
+  app.banner('SimpleCLI Toolkit for Bun', '54 Zero-Dependency Production CLI Tools');
 
   const rows: [string, string][] = [
     ['api_stress_bench', 'HTTP benchmark & latency stress tester with statistical distribution'],
@@ -99,7 +99,9 @@ if (args.length === 0 || args[0] === '-l' || args[0] === '--list') {
     ['port_kill_cli', 'Inspect listening network ports & kill stuck dev server processes'],
     ['qalc_cli', 'Advanced equation solver & algebraic calculator'],
     ['recon_cli', 'Security & network reconnaissance suite'],
+    ['redis_cli', 'Namespaced Redis key explorer, value inspector & multi-tenant manager'],
     ['regex_cli', 'Regular expression tester & capture group visualizer'],
+
     ['rg_cli', 'Fast recursive code & text search (ripgrep style)'],
     ['say_cli', 'Text-to-speech voice synthesis CLI'],
     ['sd_cli', 'Search & replace text utility with line diffs'],

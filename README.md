@@ -33,6 +33,7 @@ It delivers cross-platform OS system telemetry, hardware resource monitoring, de
 | **Statistics Studio**<br>_Central Tendency, RMS & StdDev_ | ![Stats Demo](assets/stats_demo.gif) | Mean, median, variance & sparklines |
 | **Terminal Graph Visualizer**<br>_Distribution Charts & Bar Graphs_ | ![Graph Demo](assets/graph_demo.gif) | ASCII/Unicode terminal graphs & distributions |
 | **Crypto Studio**<br>_SHA-256 & AES-256 Encryption_ | ![Crypto Demo](assets/crypto_demo.gif) | Native hashing & AES-256 symmetric encryption |
+| **Namespaced Redis Manager**<br>_Multi-Tenant Isolation & Keys_ | ![Redis Demo](assets/redis_demo.gif) | Zero-overhead key prefixing, isolated tenants & inspection |
 
 </details>
 
@@ -49,6 +50,8 @@ vhs scripts/tapes/calc.tape
 vhs scripts/tapes/stats.tape
 vhs scripts/tapes/graph.tape
 vhs scripts/tapes/crypto.tape
+vhs scripts/tapes/redis.tape
+
 
 # Or run the live demonstration shell script
 ./scripts/demo_showcase.sh
@@ -94,7 +97,9 @@ vhs scripts/tapes/crypto.tape
 - 🌐 **HTTP & Networking**: REST API client with status codes, headers, and file downloads with live progress bars.
 - 📦 **Generic Data Structures**: Stack, Queue, SetCollection, RingBuffer, MinHeap, PriorityQueue, and LRUCache.
 - 🧮 **Statistics & Math**: Mean, median, mode, standard deviation, RMS, variance, and numeric aggregations.
-- 🛠️ **49 Pre-Built Production CLI Tools**: Ready-to-run utilities for DevOps, security, databases, text processing, media, and mathematics.
+- 🔴 **Native Namespaced Redis Wrapper**: Multi-tenant key isolation, typed JSON, sub-namespaces, hashes, sets, distributed locks, and pub/sub.
+- 🛠️ **54 Pre-Built Production CLI Tools**: Ready-to-run utilities for DevOps, security, databases, text processing, media, and mathematics.
+
 
 ---
 
@@ -215,7 +220,7 @@ const apiToken = await app.promptPassword('Enter secret API access token:');
 
 ---
 
-## 🛠️ Complete Suite of 49 CLI Applications
+## 🛠️ Complete Suite of 54 CLI Applications
 
 Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual scripts in `cli_apps/`:
 
@@ -258,7 +263,9 @@ Run any tool directly via `bun run bin/simplcli.ts <app-name>` or run individual
 | `port_kill_cli` | Inspect listening network ports & kill stuck dev server processes |
 | `qalc_cli` | Advanced equation solver & algebraic calculator |
 | `recon_cli` | Security & network reconnaissance suite |
+| `redis_cli` | Namespaced Redis key explorer, value inspector & multi-tenant manager |
 | `regex_cli` | Regular expression tester & capture group visualizer |
+
 | `rg_cli` | Fast recursive code & text search (ripgrep style) |
 | `say_cli` | Text-to-speech voice synthesis CLI |
 | `sd_cli` | Search & replace text utility with line diffs |

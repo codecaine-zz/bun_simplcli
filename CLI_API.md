@@ -333,3 +333,42 @@ const manPage = app.generateManPage();
 await SimpleCLI.compileBinary('./bin/simplcli.ts', './dist/simplcli-bin');
 ```
 
+---
+
+## 14. Native Namespaced Redis Multi-Tenant Client
+
+Isolate different applications, services, or tenants within a single Redis instance using zero-overhead key prefixing and automatic sub-namespacing powered by Bun's native `bun:redis` engine:
+
+```typescript
+import { NamespacedRedis, createRedisNamespace } from 'bun-simplcli';
+
+// Initialize a namespaced client for an app or tenant
+const authApp = createRedisNamespace('auth_service');
+const analyticsApp = createRedisNamespace('analytics');
+
+// 1. Key-Value & Typed JSON Operations
+// Stored as 'auth_service:user:42' in Redis, but accessed cleanly as 'user:42'
+await authApp.setJson('user:42', { id: 42, role: 'admin' }, { ex: 3600 });
+const user = await authApp.getJson<{ id: number; role: string }>('user:42');
+
+// 2. Sub-namespacing (Hierarchical namespaces)
+const sessionStore = authApp.namespace('sessions'); // 'auth_service:sessions:...'
+await sessionStore.set('session_abc', 'active', { ex: 1800 });
+
+// 3. Hashes, Lists, Sets & Counters
+await authApp.hset('profile:42', { name: 'Alex', loginCount: 1 });
+await authApp.sadd('roles:admin', 'user:42', 'user:88');
+await authApp.incr('metrics:login_attempts');
+
+// 4. Distributed Locks (Mutex)
+await authApp.withLock('migration_lock', async () => {
+  // Execute critical section with automatic lock acquire and release
+  console.log('Running safe migration...');
+}, 5000);
+
+// 5. Namespace Isolation & Safe Flush
+// Only deletes keys starting with 'auth_service:', leaving all other apps safe!
+const deleted = await authApp.flushNamespace();
+```
+
+

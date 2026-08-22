@@ -7,6 +7,7 @@ import { Logger } from './logger.ts';
 import { Prompts } from './prompts.ts';
 import { Pipeline } from './pipeline.ts';
 import { ConfigStore } from './config.ts';
+import { NamespacedRedis, type NamespacedRedisOptions } from './redis.ts';
 import {
   LogLevel,
   type LogLevelName,
@@ -1005,6 +1006,19 @@ export class SimpleCLI {
     const dir = resolve(homedir(), `.${appName.toLowerCase()}`);
     return resolve(dir, fileName);
   }
+
+  // ===========================================================================
+  // Namespaced Redis Client Helper
+  // ===========================================================================
+
+  public redis(namespace?: string, options?: Omit<NamespacedRedisOptions, 'namespace'>): NamespacedRedis {
+    const ns = namespace || this.appName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    return new NamespacedRedis({
+      namespace: ns,
+      ...options,
+    });
+  }
+
 
   // ===========================================================================
   // Interactive File Picker Proxy
